@@ -3,14 +3,10 @@ package main
 import (
 	"context"
 	"net/http"
-	"os"
 
 	googlestorage "cloud.google.com/go/storage"
 	"github.com/apex/httplog"
 	"github.com/apex/log"
-	"github.com/apex/log/handlers/apexlogs"
-	"github.com/apex/log/handlers/logfmt"
-	"github.com/apex/log/handlers/multi"
 	"github.com/google/go-github/v28/github"
 	"github.com/tj/go/env"
 	"golang.org/x/oauth2"
@@ -20,18 +16,15 @@ import (
 	"github.com/tj/gobinaries/storage"
 )
 
+type NullFlusher struct {
+}
+
+func (n NullFlusher) Flush() error {
+	return nil
+}
+
 // main
 func main() {
-	// logs
-	handler := &apexlogs.Handler{
-		URL:       env.Get("APEX_LOGS_URL"),
-		ProjectID: env.Get("APEX_LOGS_PROJECT_ID"),
-	}
-
-	if os.Getenv("APEX_LOGS_DISABLE") == "" {
-		log.SetHandler(multi.New(handler, logfmt.Default))
-	}
-
 	// context
 	ctx := context.Background()
 
@@ -63,8 +56,10 @@ func main() {
 		},
 	}
 
+	x := NullFlusher{}
+
 	// add request level logging
-	h := flusher(httplog.New(s), handler)
+	h := flusher(httplog.New(s), x)
 
 	// listen
 	log.WithField("addr", addr).Info("starting server")
